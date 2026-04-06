@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\MediaDisk;
 use App\Models\Questionnaire;
 use App\Models\Question;
 use App\Models\Module;
@@ -215,12 +216,12 @@ class QuestionnaireController extends Controller
                             'id' => $option->id,
                             'text' => $option->text,
                             'is_correct' => $option->is_correct,
-                            'image_url' => $option->image_url,
+                            'image_url' => MediaDisk::publicUrl($option->image_url),
                             'order' => $option->order,
                         ];
                     }),
                     'correct_answer' => $question->correct_answer,
-                    'image_url' => $question->image_url,
+                    'image_url' => MediaDisk::publicUrl($question->image_url),
                     'difficulty' => $question->difficulty,
                     'points' => $question->points,
                 ];

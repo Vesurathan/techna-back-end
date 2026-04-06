@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Attendance;
+use App\Support\MediaDisk;
 use App\Models\Payment;
 use App\Models\Student;
 use App\Models\Staff;
@@ -448,7 +449,7 @@ class AttendanceController extends Controller
             'first_name' => $student->first_name,
             'last_name' => $student->last_name,
             'full_name' => $student->full_name,
-            'image_path' => $student->image_path,
+            'image_path' => MediaDisk::publicUrl($student->image_path),
             'date_of_birth' => $student->date_of_birth?->format('Y-m-d'),
             'gender' => $student->gender,
             'nic_number' => $student->nic_number,
@@ -483,7 +484,7 @@ class AttendanceController extends Controller
             'first_name' => $staff->first_name,
             'last_name' => $staff->last_name,
             'full_name' => $staff->full_name,
-            'image_path' => $staff->image_path,
+            'image_path' => MediaDisk::publicUrl($staff->image_path),
             'nic_number' => $staff->nic_number,
             'date_of_birth' => $staff->date_of_birth?->format('Y-m-d'),
             'gender' => $staff->gender,

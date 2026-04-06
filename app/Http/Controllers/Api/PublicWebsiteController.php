@@ -7,6 +7,7 @@ use App\Models\GalleryCategory;
 use App\Models\GalleryImage;
 use App\Models\Module;
 use App\Models\Staff;
+use App\Support\MediaDisk;
 use Illuminate\Http\Request;
 
 /**
@@ -94,7 +95,7 @@ class PublicWebsiteController extends Controller
         return response()->json([
             'images' => $images->map(fn (GalleryImage $img) => [
                 'id' => $img->id,
-                'url' => $this->resolvePublicUrl($img->file_path),
+                'url' => MediaDisk::publicUrl($img->file_path) ?? '',
                 'original_name' => $img->original_name,
             ]),
         ]);
@@ -111,7 +112,7 @@ class PublicWebsiteController extends Controller
             'staff' => $module->staffs->map(fn (Staff $s) => [
                 'id' => $s->id,
                 'fullName' => $s->full_name,
-                'imageUrl' => $this->resolvePublicUrl($s->image_path),
+                'imageUrl' => MediaDisk::publicUrl($s->image_path),
                 'qualifications' => $s->qualifications,
             ]),
         ];
@@ -126,7 +127,7 @@ class PublicWebsiteController extends Controller
             'fullName' => $staff->full_name,
             'schoolName' => $staff->school_name,
             'qualifications' => $staff->qualifications,
-            'imageUrl' => $this->resolvePublicUrl($staff->image_path),
+            'imageUrl' => MediaDisk::publicUrl($staff->image_path),
             'modules' => $staff->modules->map(fn (Module $m) => [
                 'id' => $m->id,
                 'name' => $m->name,
@@ -135,24 +136,4 @@ class PublicWebsiteController extends Controller
         ];
     }
 
-    private function resolvePublicUrl(?string $path): ?string
-    {
-        if ($path === null || $path === '') {
-            return null;
-        }
-
-        $path = trim($path);
-
-        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
-            return $path;
-        }
-
-        $base = rtrim(config('app.url'), '/');
-
-        if (str_starts_with($path, '/storage/')) {
-            return $base.$path;
-        }
-
-        return $base.'/storage/'.ltrim($path, '/');
-    }
 }

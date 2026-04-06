@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Question;
 use App\Models\QuestionOption;
 use App\Models\Module;
+use App\Support\MediaDisk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class QuestionController extends Controller
@@ -388,12 +388,12 @@ class QuestionController extends Controller
                     'id' => $option->id,
                     'text' => $option->text,
                     'is_correct' => $option->is_correct,
-                    'image_url' => $option->image_url,
+                    'image_url' => MediaDisk::publicUrl($option->image_url),
                     'order' => $option->order,
                 ];
             }),
             'correct_answer' => $question->correct_answer,
-            'image_url' => $question->image_url,
+            'image_url' => MediaDisk::publicUrl($question->image_url),
             'difficulty' => $question->difficulty,
             'points' => $question->points,
             'created_at' => $question->created_at,
@@ -401,20 +401,17 @@ class QuestionController extends Controller
         ];
     }
 
-    private function storeImage($file, $folder = 'uploads'): string
+    private function storeImage($file, $folder = 'questions'): string
     {
-        // Store in public storage
-        $path = $file->store($folder, 'public');
-        // Return full URL
-        return Storage::url($path);
+        $path = MediaDisk::storeUpload($file, $folder);
+        $url = MediaDisk::publicUrl($path);
+
+        return $url ?? '';
     }
 
     private function deleteImage($imageUrl): void
     {
-        // Extract path from URL
-        $path = str_replace('/storage/', '', parse_url($imageUrl, PHP_URL_PATH));
-        if ($path && Storage::disk('public')->exists($path)) {
-            Storage::disk('public')->delete($path);
-        }
+        $key = MediaDisk::keyFromStoredUrl($imageUrl);
+        MediaDisk::deleteIfExists($key);
     }
 }

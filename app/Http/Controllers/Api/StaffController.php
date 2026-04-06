@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\MediaDisk;
 use App\Models\Staff;
 use App\Models\Module;
 use App\Models\Role;
@@ -319,7 +320,7 @@ class StaffController extends Controller
             'secondaryPhone' => $staff->secondary_phone,
             'secondaryPhoneHasWhatsapp' => $staff->secondary_phone_has_whatsapp,
             'medicalNotes' => $staff->medical_notes,
-            'imagePath' => $staff->image_path,
+            'imagePath' => MediaDisk::publicUrl($staff->image_path),
             'status' => $staff->status,
             'account' => $account,
             'modules' => $staff->modules->map(function ($module) {

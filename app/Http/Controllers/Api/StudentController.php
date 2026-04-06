@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Student;
 use App\Models\Module;
+use App\Support\MediaDisk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
@@ -292,7 +293,7 @@ class StudentController extends Controller
             'schoolName' => $student->school_name,
             'bloodGroup' => $student->blood_group,
             'medicalNotes' => $student->medical_notes,
-            'imagePath' => $student->image_path,
+            'imagePath' => MediaDisk::publicUrl($student->image_path),
             'admissionFee' => (float) $student->admission_fee,
             'moduleTotalAmount' => (float) $student->module_total_amount,
             'paidAmount' => (float) $student->paid_amount,

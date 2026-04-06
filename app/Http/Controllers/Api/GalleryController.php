@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\GalleryCategory;
 use App\Models\GalleryImage;
+use App\Support\MediaDisk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class GalleryController extends Controller
@@ -102,7 +102,7 @@ class GalleryController extends Controller
         $created = [];
 
         foreach ($validated['images'] as $file) {
-            $path = $file->store('gallery/'.$galleryCategory->id, 'public');
+            $path = MediaDisk::storeUpload($file, 'gallery/'.$galleryCategory->id);
             $created[] = GalleryImage::create([
                 'gallery_category_id' => $galleryCategory->id,
                 'file_path' => $path,
@@ -128,9 +128,7 @@ class GalleryController extends Controller
 
     private function deleteImageFile(GalleryImage $image): void
     {
-        if ($image->file_path && Storage::disk('public')->exists($image->file_path)) {
-            Storage::disk('public')->delete($image->file_path);
-        }
+        MediaDisk::deleteIfExists($image->file_path);
     }
 
     private function formatCategory(GalleryCategory $category): array
@@ -148,20 +146,11 @@ class GalleryController extends Controller
         return [
             'id' => (string) $image->id,
             'gallery_category_id' => (string) $image->gallery_category_id,
-            'url' => $this->publicUrl($image->file_path),
+            'url' => MediaDisk::publicUrl($image->file_path) ?? '',
             'original_name' => $image->original_name,
             'mime_type' => $image->mime_type,
             'created_at' => $image->created_at?->toIso8601String(),
         ];
     }
 
-    private function publicUrl(string $path): string
-    {
-        $relative = Storage::disk('public')->url($path);
-        if (str_starts_with($relative, 'http://') || str_starts_with($relative, 'https://')) {
-            return $relative;
-        }
-
-        return rtrim(config('app.url'), '/').'/'.ltrim($relative, '/');
-    }
 }

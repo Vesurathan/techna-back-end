@@ -17,6 +17,14 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Uploads disk (gallery, photo library, question images, etc.)
+    |--------------------------------------------------------------------------
+    | Use "public" locally, "spaces" for DigitalOcean Spaces (S3-compatible).
+    */
+    'uploads_disk' => env('FILESYSTEM_UPLOADS_DISK', 'public'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
     |
@@ -56,6 +64,25 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'throw' => false,
+            'report' => false,
+        ],
+
+        /*
+        | DigitalOcean Spaces (S3-compatible). Set FILESYSTEM_UPLOADS_DISK=spaces to use.
+        | Endpoint: https://{region}.digitaloceanspaces.com
+        | Public URL: https://{bucket}.{region}.digitaloceanspaces.com or CDN origin.
+        */
+        'spaces' => [
+            'driver' => 's3',
+            'key' => env('DO_SPACES_KEY'),
+            'secret' => env('DO_SPACES_SECRET'),
+            'region' => env('DO_SPACES_REGION', 'nyc3'),
+            'bucket' => env('DO_SPACES_BUCKET'),
+            'url' => env('DO_SPACES_URL'),
+            'endpoint' => env('DO_SPACES_ENDPOINT'),
+            'use_path_style_endpoint' => env('DO_SPACES_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'public',
             'throw' => false,
             'report' => false,
         ],

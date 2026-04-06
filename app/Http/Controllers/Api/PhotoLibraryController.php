@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\PhotoFolder;
 use App\Models\PhotoLibraryImage;
+use App\Support\MediaDisk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class PhotoLibraryController extends Controller
@@ -127,7 +127,7 @@ class PhotoLibraryController extends Controller
         ]);
 
         $file = $request->file('file');
-        $path = $file->store('photo-library', 'public');
+        $path = MediaDisk::storeUpload($file, 'photo-library');
 
         $image = PhotoLibraryImage::create([
             'photo_folder_id' => $folder->id,
@@ -182,9 +182,7 @@ class PhotoLibraryController extends Controller
 
     private function deleteImageFile(PhotoLibraryImage $image): void
     {
-        if ($image->file_path && Storage::disk('public')->exists($image->file_path)) {
-            Storage::disk('public')->delete($image->file_path);
-        }
+        MediaDisk::deleteIfExists($image->file_path);
     }
 
     private function formatFolder(PhotoFolder $folder): array
@@ -203,7 +201,7 @@ class PhotoLibraryController extends Controller
         return [
             'id' => (string) $image->id,
             'photo_folder_id' => (string) $image->photo_folder_id,
-            'url' => $this->publicUrl($image->file_path),
+            'url' => MediaDisk::publicUrl($image->file_path) ?? '',
             'original_name' => $image->original_name,
             'mime_type' => $image->mime_type,
             'is_active' => (bool) $image->is_active,
@@ -211,13 +209,4 @@ class PhotoLibraryController extends Controller
         ];
     }
 
-    private function publicUrl(string $path): string
-    {
-        $relative = Storage::disk('public')->url($path);
-        if (str_starts_with($relative, 'http://') || str_starts_with($relative, 'https://')) {
-            return $relative;
-        }
-
-        return rtrim(config('app.url'), '/').'/'.ltrim($relative, '/');
-    }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
+use App\Support\MediaDisk;
 use App\Models\Student;
 use App\Models\Module;
 use App\Models\ModuleFee;
@@ -134,7 +135,7 @@ class PaymentController extends Controller
                 'admission_batch' => $student->admission_batch,
                 'personal_phone' => $student->personal_phone,
                 'parent_phone' => $student->parent_phone,
-                'image_path' => $student->image_path,
+                'image_path' => MediaDisk::publicUrl($student->image_path),
                 'modules' => $student->modules->map(function ($module) {
                     return [
                         'id' => $module->id,
