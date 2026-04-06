@@ -4,7 +4,9 @@ namespace App\Support;
 
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 
 /**
  * Central upload disk: local "public" for dev, DigitalOcean Spaces (S3 driver) in production.
@@ -28,11 +30,25 @@ final class MediaDisk
         $name = self::diskName();
         $driver = config("filesystems.disks.{$name}.driver");
 
-        if ($driver === 's3') {
-            return $file->storePublicly($directory, $name);
+        $path = $driver === 's3'
+            ? $file->storePublicly($directory, $name)
+            : $file->store($directory, $name);
+
+        if ($path === false || $path === '') {
+            Log::error('MediaDisk::storeUpload failed', [
+                'disk' => $name,
+                'driver' => $driver,
+                'directory' => $directory,
+            ]);
+            throw new RuntimeException(
+                'Could not store file. If using DigitalOcean Spaces, set FILESYSTEM_UPLOADS_DISK=spaces and '.
+                'fill DO_SPACES_KEY, DO_SPACES_SECRET, DO_SPACES_BUCKET, DO_SPACES_ENDPOINT '.
+                '(e.g. https://nyc3.digitaloceanspaces.com), and DO_SPACES_URL for public links. '.
+                'Run php artisan config:clear after changing .env.'
+            );
         }
 
-        return $file->store($directory, $name);
+        return $path;
     }
 
     public static function publicUrl(?string $path): ?string

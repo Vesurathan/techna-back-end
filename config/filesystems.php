@@ -83,7 +83,8 @@ return [
             'endpoint' => env('DO_SPACES_ENDPOINT'),
             'use_path_style_endpoint' => env('DO_SPACES_USE_PATH_STYLE_ENDPOINT', false),
             'visibility' => 'public',
-            'throw' => false,
+            // Surface S3/Spaces errors in logs and API instead of failing silently
+            'throw' => env('FILESYSTEM_SPACES_THROW', true),
             'report' => false,
         ],
 

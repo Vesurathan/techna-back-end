@@ -67,7 +67,7 @@ class StaffController extends Controller
             'blood_group' => 'nullable|string|max:10',
             'school_name' => 'nullable|string|max:255',
             'qualifications' => 'nullable|string',
-            'module_ids' => 'required|array|min:1',
+            'module_ids' => 'nullable|array',
             'module_ids.*' => 'integer|exists:modules,id',
             'secondary_phone' => 'required|string|max:20',
             'secondary_phone_has_whatsapp' => 'boolean',
@@ -99,10 +99,7 @@ class StaffController extends Controller
                 'status' => $validated['status'] ?? 'active',
             ]);
 
-            // Attach modules
-            if (isset($validated['module_ids'])) {
-                $staff->modules()->sync($validated['module_ids']);
-            }
+            $staff->modules()->sync($validated['module_ids'] ?? []);
 
             $staff->load('modules');
 
@@ -210,7 +207,7 @@ class StaffController extends Controller
             'blood_group' => 'nullable|string|max:10',
             'school_name' => 'nullable|string|max:255',
             'qualifications' => 'nullable|string',
-            'module_ids' => 'required|array|min:1',
+            'module_ids' => 'nullable|array',
             'module_ids.*' => 'integer|exists:modules,id',
             'secondary_phone' => 'required|string|max:20',
             'secondary_phone_has_whatsapp' => 'boolean',
@@ -238,10 +235,7 @@ class StaffController extends Controller
                 'status' => $validated['status'],
             ]);
 
-            // Update modules if provided
-            if (isset($validated['module_ids'])) {
-                $staff->modules()->sync($validated['module_ids']);
-            }
+            $staff->modules()->sync($validated['module_ids'] ?? []);
 
             $staff->load('modules');
 
