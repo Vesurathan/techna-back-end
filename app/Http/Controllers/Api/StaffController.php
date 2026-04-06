@@ -35,9 +35,13 @@ class StaffController extends Controller
         $page = (int) $request->get('page', 1);
         $perPage = 10; // Maximum 10 records per page
 
-        $staffs = Staff::with(['modules', 'user.role.permissions'])
-            ->orderBy('created_at', 'desc')
-            ->paginate($perPage, ['*'], 'page', $page);
+        $query = Staff::with(['modules', 'user.role.permissions']);
+
+        if (! $request->boolean('include_inactive')) {
+            $query->where('status', 'active');
+        }
+
+        $staffs = $query->orderBy('created_at', 'desc')->paginate($perPage, ['*'], 'page', $page);
 
         return response()->json([
             'staffs' => $staffs->map(function ($staff) {
@@ -73,6 +77,7 @@ class StaffController extends Controller
             'secondary_phone_has_whatsapp' => 'boolean',
             'medical_notes' => 'nullable|string',
             'image_path' => 'nullable|string',
+            'image' => 'nullable|image|max:10240',
             'status' => 'nullable|in:active,inactive,on_leave,terminated',
         ]);
 
@@ -101,12 +106,18 @@ class StaffController extends Controller
 
             $staff->modules()->sync($validated['module_ids'] ?? []);
 
+            if ($request->hasFile('image')) {
+                $path = MediaDisk::storeUpload($request->file('image'), 'staff/'.$staff->id);
+                $staff->image_path = $path;
+                $staff->save();
+            }
+
             $staff->load('modules');
 
             DB::commit();
 
             return response()->json([
-                'staff' => $this->formatStaff($staff),
+                'staff' => $this->formatStaff($staff->fresh()),
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -213,11 +224,20 @@ class StaffController extends Controller
             'secondary_phone_has_whatsapp' => 'boolean',
             'medical_notes' => 'nullable|string',
             'image_path' => 'nullable|string',
+            'image' => 'nullable|image|max:10240',
             'status' => 'required|in:active,inactive,on_leave,terminated',
         ]);
 
         DB::beginTransaction();
         try {
+            $imagePath = $staff->image_path;
+            if ($request->hasFile('image')) {
+                MediaDisk::deleteIfExists($staff->image_path);
+                $imagePath = MediaDisk::storeUpload($request->file('image'), 'staff/'.$staff->id);
+            } elseif ($request->exists('image_path')) {
+                $imagePath = $validated['image_path'] ?? null;
+            }
+
             $staff->update([
                 'first_name' => $validated['first_name'],
                 'last_name' => $validated['last_name'],
@@ -231,7 +251,7 @@ class StaffController extends Controller
                 'secondary_phone' => $validated['secondary_phone'],
                 'secondary_phone_has_whatsapp' => $validated['secondary_phone_has_whatsapp'] ?? false,
                 'medical_notes' => $validated['medical_notes'] ?? null,
-                'image_path' => $validated['image_path'] ?? null,
+                'image_path' => $imagePath,
                 'status' => $validated['status'],
             ]);
 
@@ -242,7 +262,7 @@ class StaffController extends Controller
             DB::commit();
 
             return response()->json([
-                'staff' => $this->formatStaff($staff),
+                'staff' => $this->formatStaff($staff->fresh()),
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -254,12 +274,13 @@ class StaffController extends Controller
 
     public function destroy(Staff $staff)
     {
-        // Soft delete - make inactive instead of hard delete
-        $staff->status = 'inactive';
-        $staff->save();
-        // $staff->delete(); // Uncomment if you want to use soft delete
+        DB::transaction(function () use ($staff) {
+            $staff->modules()->detach();
+            $staff->status = 'inactive';
+            $staff->save();
+        });
 
-        return response()->json(['message' => 'Staff marked as inactive successfully']);
+        return response()->json(['message' => 'Staff removed from the directory successfully']);
     }
 
     private function generateBarcode(): string

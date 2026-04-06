@@ -15,7 +15,11 @@ class ModuleController extends Controller
         $page = (int) $request->get('page', 1);
         $perPage = 10; // Maximum 10 records per page
 
-        $modules = Module::with('staffs')
+        $modules = Module::with([
+            'staffs' => function ($query) {
+                $query->where('status', 'active');
+            },
+        ])
             ->orderBy('name')
             ->paginate($perPage, ['*'], 'page', $page);
 
@@ -57,7 +61,11 @@ class ModuleController extends Controller
             $module->staffs()->sync($validated['staff_ids']);
         }
 
-        $module->load('staffs');
+        $module->load([
+            'staffs' => function ($query) {
+                $query->where('status', 'active');
+            },
+        ]);
 
         return response()->json([
             'module' => $this->formatModule($module),
@@ -66,7 +74,11 @@ class ModuleController extends Controller
 
     public function show(Module $module)
     {
-        $module->load('staffs');
+        $module->load([
+            'staffs' => function ($query) {
+                $query->where('status', 'active');
+            },
+        ]);
 
         return response()->json([
             'module' => $this->formatModule($module),
@@ -93,7 +105,11 @@ class ModuleController extends Controller
 
         $module->staffs()->sync($validated['staff_ids'] ?? []);
 
-        $module->load('staffs');
+        $module->load([
+            'staffs' => function ($query) {
+                $query->where('status', 'active');
+            },
+        ]);
 
         return response()->json([
             'module' => $this->formatModule($module),

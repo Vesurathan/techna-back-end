@@ -39,6 +39,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/staffs', [StaffController::class, 'store']);
         Route::get('/staffs/{staff}', [StaffController::class, 'show']);
         Route::put('/staffs/{staff}', [StaffController::class, 'update']);
+        // Multipart profile photo (PHP/Laravel handle file uploads reliably on POST)
+        Route::post('/staffs/{staff}', [StaffController::class, 'update']);
         Route::delete('/staffs/{staff}', [StaffController::class, 'destroy']);
 
         // Modules
