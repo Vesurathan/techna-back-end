@@ -56,6 +56,7 @@ class StudentController extends Controller
             'blood_group' => 'nullable|string|max:10',
             'medical_notes' => 'nullable|string',
             'image_path' => 'nullable|string',
+            'image' => 'nullable|image|max:10240',
             'module_ids' => 'required|array|min:1|max:3',
             'module_ids.*' => 'integer|exists:modules,id',
             'payment_type' => 'required|in:full,admission_only',
@@ -68,8 +69,7 @@ class StudentController extends Controller
             // Generate admission number
             $admissionNumber = $this->generateAdmissionNumber(
                 $validated['admission_batch'],
-                $validated['module_ids'],
-                $validated['gender']
+                $validated['module_ids']
             );
 
             // Generate barcode (using admission number as base)
@@ -111,6 +111,12 @@ class StudentController extends Controller
                 'payment_type' => $validated['payment_type'],
                 'status' => $validated['status'] ?? 'active',
             ]);
+
+            if ($request->hasFile('image')) {
+                $path = MediaDisk::storeUpload($request->file('image'), 'students/'.$student->id);
+                $student->image_path = $path;
+                $student->save();
+            }
 
             // Attach modules
             $student->modules()->sync($validated['module_ids']);
@@ -161,6 +167,7 @@ class StudentController extends Controller
             'blood_group' => 'nullable|string|max:10',
             'medical_notes' => 'nullable|string',
             'image_path' => 'nullable|string',
+            'image' => 'nullable|image|max:10240',
             'module_ids' => 'required|array|min:1|max:3',
             'module_ids.*' => 'integer|exists:modules,id',
             'payment_type' => 'required|in:full,admission_only',
@@ -170,6 +177,21 @@ class StudentController extends Controller
 
         DB::beginTransaction();
         try {
+            $shouldRegenerateAdmissionNumber = false;
+
+            if (($validated['admission_batch'] ?? null) !== $student->admission_batch) {
+                $shouldRegenerateAdmissionNumber = true;
+            }
+
+            $currentModuleIds = $student->modules()->pluck('modules.id')->map(fn ($id) => (int) $id)->all();
+            sort($currentModuleIds);
+            $incomingModuleIds = array_map('intval', $validated['module_ids'] ?? []);
+            sort($incomingModuleIds);
+
+            if ($incomingModuleIds !== $currentModuleIds) {
+                $shouldRegenerateAdmissionNumber = true;
+            }
+
             // Recalculate module total amount if modules changed
             if (isset($validated['module_ids'])) {
                 $modules = Module::whereIn('id', $validated['module_ids'])->get();
@@ -183,6 +205,22 @@ class StudentController extends Controller
                     $validated['paid_amount'] = 500;
                 }
             }
+
+            if ($shouldRegenerateAdmissionNumber) {
+                $validated['admission_number'] = $this->generateAdmissionNumber(
+                    $validated['admission_batch'],
+                    $validated['module_ids']
+                );
+            }
+
+            $imagePath = $student->image_path;
+            if ($request->hasFile('image')) {
+                MediaDisk::deleteIfExists($student->image_path);
+                $imagePath = MediaDisk::storeUpload($request->file('image'), 'students/'.$student->id);
+            } elseif ($request->exists('image_path')) {
+                $imagePath = $validated['image_path'] ?? null;
+            }
+            $validated['image_path'] = $imagePath;
 
             $student->update($validated);
 
@@ -224,7 +262,7 @@ class StudentController extends Controller
         return response()->json(['message' => 'Student deactivated successfully']);
     }
 
-    private function generateAdmissionNumber(string $batch, array $moduleIds, string $gender): string
+    private function generateAdmissionNumber(string $batch, array $moduleIds): string
     {
         // Get last 2 digits of batch (e.g., "2026" -> "26")
         $batchDigits = substr($batch, -2);
@@ -235,32 +273,19 @@ class StudentController extends Controller
             return strtoupper(substr($module->name, 0, 1));
         })->implode('');
 
-        // Get gender letter: M for male, F for female, O for other
-        $genderLetter = match($gender) {
-            'male' => 'M',
-            'female' => 'F',
-            'other' => 'O',
-            default => 'M',
-        };
+        // Sequential numbering (no random): {batchDigits}|{moduleLetters}|{n}
+        // Example: 25|S|1, 25|S|2 ...
+        $prefix = "{$batchDigits}|{$moduleLetters}|";
 
-        // Generate 4 unique random numbers
-        $uniqueNumber = str_pad(rand(1000, 9999), 4, '0', STR_PAD_LEFT);
+        $last = Student::query()
+            ->where('admission_number', 'like', $prefix.'%')
+            ->selectRaw("CAST(SUBSTRING_INDEX(admission_number, '|', -1) AS UNSIGNED) AS seq")
+            ->orderByDesc('seq')
+            ->value('seq');
 
-        // Check if admission number already exists, regenerate if needed
-        // Format: {batchDigits}|{moduleLetters}|{genderLetter}|{uniqueNumber}
-        $admissionNumber = "{$batchDigits}|{$moduleLetters}|{$genderLetter}|{$uniqueNumber}";
-        $attempts = 0;
-        while (Student::where('admission_number', $admissionNumber)->exists() && $attempts < 10) {
-            $uniqueNumber = str_pad(rand(1000, 9999), 4, '0', STR_PAD_LEFT);
-            $admissionNumber = "{$batchDigits}|{$moduleLetters}|{$genderLetter}|{$uniqueNumber}";
-            $attempts++;
-        }
+        $next = ((int) ($last ?? 0)) + 1;
 
-        if ($attempts >= 10) {
-            throw new \Exception('Unable to generate unique admission number');
-        }
-
-        return $admissionNumber;
+        return $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
     }
 
     private function generateBarcode(string $admissionNumber): string

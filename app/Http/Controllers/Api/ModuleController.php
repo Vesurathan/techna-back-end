@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Module;
+use App\Models\SubModule;
 use App\Models\Staff;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -19,6 +20,7 @@ class ModuleController extends Controller
             'staffs' => function ($query) {
                 $query->where('status', 'active');
             },
+            'subModules',
         ])
             ->orderBy('name')
             ->paginate($perPage, ['*'], 'page', $page);
@@ -48,7 +50,15 @@ class ModuleController extends Controller
             'amount' => 'required|numeric|min:0',
             'staff_ids' => 'nullable|array',
             'staff_ids.*' => 'integer|exists:staffs,id',
+            'sub_modules' => 'nullable|array',
+            'sub_modules.*.name' => 'required|string|max:255',
+            'sub_modules.*.sort_order' => 'nullable|integer|min:0|max:999999',
         ]);
+
+        $subModules = $validated['sub_modules'] ?? [];
+        if (is_array($subModules) && count($subModules) > 0) {
+            $validated['sub_modules_count'] = count($subModules);
+        }
 
         $module = Module::create([
             'name' => $validated['name'],
@@ -61,10 +71,24 @@ class ModuleController extends Controller
             $module->staffs()->sync($validated['staff_ids']);
         }
 
+        if (!empty($subModules)) {
+            $rows = array_map(function ($row) use ($module) {
+                return [
+                    'module_id' => $module->id,
+                    'name' => $row['name'],
+                    'sort_order' => (int) ($row['sort_order'] ?? 0),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }, $subModules);
+            SubModule::insert($rows);
+        }
+
         $module->load([
             'staffs' => function ($query) {
                 $query->where('status', 'active');
             },
+            'subModules',
         ]);
 
         return response()->json([
@@ -78,6 +102,7 @@ class ModuleController extends Controller
             'staffs' => function ($query) {
                 $query->where('status', 'active');
             },
+            'subModules',
         ]);
 
         return response()->json([
@@ -94,7 +119,16 @@ class ModuleController extends Controller
             'amount' => 'required|numeric|min:0',
             'staff_ids' => 'nullable|array',
             'staff_ids.*' => 'integer|exists:staffs,id',
+            'sub_modules' => 'nullable|array',
+            'sub_modules.*.id' => 'nullable|integer|exists:sub_modules,id',
+            'sub_modules.*.name' => 'required|string|max:255',
+            'sub_modules.*.sort_order' => 'nullable|integer|min:0|max:999999',
         ]);
+
+        $subModules = $validated['sub_modules'] ?? [];
+        if (is_array($subModules) && count($subModules) > 0) {
+            $validated['sub_modules_count'] = count($subModules);
+        }
 
         $module->update([
             'name' => $validated['name'],
@@ -105,10 +139,38 @@ class ModuleController extends Controller
 
         $module->staffs()->sync($validated['staff_ids'] ?? []);
 
+        // Sync sub modules (create/update/delete)
+        if (is_array($subModules)) {
+            $existing = $module->subModules()->get()->keyBy('id');
+            $keepIds = [];
+
+            foreach ($subModules as $row) {
+                $id = isset($row['id']) ? (int) $row['id'] : null;
+                if ($id && $existing->has($id)) {
+                    $sm = $existing->get($id);
+                    $sm->update([
+                        'name' => $row['name'],
+                        'sort_order' => (int) ($row['sort_order'] ?? 0),
+                    ]);
+                    $keepIds[] = $id;
+                    continue;
+                }
+
+                $created = $module->subModules()->create([
+                    'name' => $row['name'],
+                    'sort_order' => (int) ($row['sort_order'] ?? 0),
+                ]);
+                $keepIds[] = $created->id;
+            }
+
+            $module->subModules()->whereNotIn('id', $keepIds)->delete();
+        }
+
         $module->load([
             'staffs' => function ($query) {
                 $query->where('status', 'active');
             },
+            'subModules',
         ]);
 
         return response()->json([
@@ -132,6 +194,11 @@ class ModuleController extends Controller
             'category' => $module->category,
             'sub_modules_count' => $module->sub_modules_count,
             'amount' => $module->amount,
+            'sub_modules' => $module->subModules->map(fn ($sm) => [
+                'id' => (string) $sm->id,
+                'name' => $sm->name,
+                'sort_order' => (int) $sm->sort_order,
+            ])->values()->all(),
             'staffs' => $module->staffs->map(function ($staff) {
                 return [
                     'id' => $staff->id,

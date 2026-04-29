@@ -403,10 +403,7 @@ class QuestionController extends Controller
 
     private function storeImage($file, $folder = 'questions'): string
     {
-        $path = MediaDisk::storeUpload($file, $folder);
-        $url = MediaDisk::publicUrl($path);
-
-        return $url ?? '';
+        return MediaDisk::storeUpload($file, $folder);
     }
 
     private function deleteImage($imageUrl): void

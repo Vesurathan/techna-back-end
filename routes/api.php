@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\PhotoLibraryController;
 use App\Http\Controllers\Api\StaffPayrollController;
 use App\Http\Controllers\Api\PublicWebsiteController;
 use App\Http\Controllers\Api\GalleryController;
+use App\Http\Controllers\Api\NoteController;
 
 Route::prefix('v1')->group(function () {
     // Public website (no auth)
@@ -33,6 +34,8 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
+        Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
+        Route::post('/auth/profile-image', [AuthController::class, 'updateProfileImage']);
 
         // Staffs
         Route::get('/staffs', [StaffController::class, 'index']);
@@ -55,6 +58,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/students', [StudentController::class, 'store']);
         Route::get('/students/{student}', [StudentController::class, 'show']);
         Route::put('/students/{student}', [StudentController::class, 'update']);
+        // Multipart profile photo (PHP/Laravel handle file uploads reliably on POST)
+        Route::post('/students/{student}', [StudentController::class, 'update']);
         Route::delete('/students/{student}', [StudentController::class, 'destroy']);
         Route::post('/students/{student}/deactivate', [StudentController::class, 'deactivate']);
 
@@ -80,6 +85,14 @@ Route::prefix('v1')->group(function () {
         Route::get('/questions/{question}', [QuestionController::class, 'show']);
         Route::put('/questions/{question}', [QuestionController::class, 'update']);
         Route::delete('/questions/{question}', [QuestionController::class, 'destroy']);
+
+        // Notes (permission-based; Super Admin always allowed)
+        Route::middleware('permission:notes')->group(function () {
+            Route::get('/notes', [NoteController::class, 'index']);
+            Route::post('/notes', [NoteController::class, 'store']);
+            Route::put('/notes/{note}', [NoteController::class, 'update']);
+            Route::delete('/notes/{note}', [NoteController::class, 'destroy']);
+        });
 
         // Questionnaires
         Route::get('/questionnaires', [QuestionnaireController::class, 'index']);

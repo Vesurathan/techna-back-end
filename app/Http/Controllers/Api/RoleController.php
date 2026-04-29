@@ -35,7 +35,7 @@ class RoleController extends Controller
             'name' => 'required|string|max:255|unique:roles,name',
             'description' => 'nullable|string',
             'permissions' => 'required|array',
-            'permissions.*' => 'string|in:dashboard,attendance,modules,students,staffs,timetables,questionbank,payments,salary_payroll,reports,role,photo_library',
+            'permissions.*' => 'string|in:dashboard,attendance,modules,students,staffs,timetables,questionbank,payments,salary_payroll,reports,role,photo_library,notes',
         ]);
 
         $role = Role::create([
@@ -99,7 +99,7 @@ class RoleController extends Controller
             ],
             'description' => 'nullable|string',
             'permissions' => 'required|array',
-            'permissions.*' => 'string|in:dashboard,attendance,modules,students,staffs,timetables,questionbank,payments,salary_payroll,reports,role,photo_library',
+            'permissions.*' => 'string|in:dashboard,attendance,modules,students,staffs,timetables,questionbank,payments,salary_payroll,reports,role,photo_library,notes',
         ]);
 
         $role->update([

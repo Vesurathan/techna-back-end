@@ -32,6 +32,7 @@ class RoleSeeder extends Seeder
             'reports',
             'role',
             'photo_library',
+            'notes',
         ];
 
         foreach ($allPermissions as $permission) {
@@ -41,6 +42,56 @@ class RoleSeeder extends Seeder
                     'permission' => $permission,
                 ]
             );
+        }
+
+        // Optional standard roles (no sample users are created for these).
+        $teacher = Role::firstOrCreate(
+            ['slug' => 'teacher'],
+            [
+                'name' => 'Teacher',
+                'description' => 'Can manage modules, students, timetables, and question bank',
+                'is_super_admin' => false,
+            ]
+        );
+
+        $teacherPermissions = [
+            'dashboard',
+            'attendance',
+            'modules',
+            'students',
+            'timetables',
+            'questionbank',
+            'photo_library',
+        ];
+
+        foreach ($teacherPermissions as $permission) {
+            Permission::firstOrCreate([
+                'role_id' => $teacher->id,
+                'permission' => $permission,
+            ]);
+        }
+
+        $accountant = Role::firstOrCreate(
+            ['slug' => 'accountant'],
+            [
+                'name' => 'Accountant',
+                'description' => 'Can manage payments, salary/payroll and reports',
+                'is_super_admin' => false,
+            ]
+        );
+
+        $accountantPermissions = [
+            'dashboard',
+            'payments',
+            'salary_payroll',
+            'reports',
+        ];
+
+        foreach ($accountantPermissions as $permission) {
+            Permission::firstOrCreate([
+                'role_id' => $accountant->id,
+                'permission' => $permission,
+            ]);
         }
     }
 }
